@@ -39,45 +39,15 @@ using keyvaluestore::KeyValueStore;
 using keyvaluestore::Request;
 using keyvaluestore::Response;
 
-struct kv_pair {
-  std::string key;
-  std::string value;
-};
+# define KV_SIZE 1000
 
-size_t keyLen = 3;
-size_t valLen = 3;
-char c = '0';
-std::string firstKey =  std::string(keyLen, c);
-std::string firstVal =  std::string(valLen+1, c);
+// KV data structure
+std::map<std::string, std::string> myMap;
 
-static kv_pair kvs_map[] = {{firstKey,firstVal}};
-
-int kvs_map_size = sizeof(kvs_map) / sizeof(kvs_map[0]);
-
-
-// int n = 100;
-// void CreateKVS() {
-//   for (int i = 1; i < n; ++i) {
-//     int len = log10(i) + 1;
-//     size_t strLen = (size_t) len;
-//     std::string key1;
-//     std::string value1;
-//     char c = '0';
-//     std::string padKey = std::string((keyLen - strLen), c);
-//     std::string padVal = std::string((valLen - strLen), c);
-//     key1 = padKey + std::to_string(i);
-//     value1 = padVal + std::to_string(i);
-//     kvs_map[kvs_map_size++] = {key1,value1};
-//   }
-// }
-
+// Global function used in the KeyValueStoreServiceImpl
 std::string get_value_from_map(std::string key) {
-  for (size_t i = 0; i < sizeof(kvs_map) / sizeof(kv_pair); ++i) {
-    if (key.compare(kvs_map[i].key) == 0) {
-      return kvs_map[i].value;
-    }
-  }
-  return "";
+  std::string val = myMap.at(key); 
+  return val;
 }
 
 // Logic and data behind the server's behavior.
@@ -90,7 +60,7 @@ class KeyValueStoreServiceImpl final : public KeyValueStore::Service {
 };
 
 void RunServer() {
-  //CreateKVS();
+
   std::string server_address("0.0.0.0:50051");
   KeyValueStoreServiceImpl service;
 
@@ -110,6 +80,32 @@ void RunServer() {
 }
 
 int main(int argc, char** argv) {
+
+  int keyLen = log10(KV_SIZE) + 1; // can hard code to 24 once final implementation
+  int valLen = log10(KV_SIZE) + 1; // can hard code to 10 once final implementation
+
+  // Build the KV store myMap, a std::map<> structure, with KV_SIZE key-val pairs
+  for (int i = 1; i < KV_SIZE+1; ++i) {
+    int currentLen = log10(i) + 1;
+    std::string key;
+    std::string val;
+
+    // Padding the beginning of key and val with 0's
+    char c = '0';
+    int KeyLength = (keyLen - currentLen);
+    int ValLength = (valLen - currentLen);
+    std::string padKey = std::string(KeyLength, c);
+    std::string padVal = std::string(ValLength, c);
+    key = padKey + std::to_string(i);
+    val = padVal + std::to_string(i);
+
+    // Insert into KV
+    myMap.insert(std::pair<std::string,std::string>(key,val));
+
+    // Printed out to serverWU.cc terminal
+    std::cout << "key created: " << key << std::endl;
+    std::cout << "val created: " << val << std::endl;
+  }
   RunServer();
 
   return 0;

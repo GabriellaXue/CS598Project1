@@ -97,8 +97,8 @@ int main(int argc, char** argv) {
   }
   KeyValueStoreClient client(
       grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials()));
-  
-  std::string key = {"000"};
+
+  std::string key = {"0"};
   std::string resp = client.GetValue(key);
   std::cout << "Client received: " << resp << std::endl;
 
