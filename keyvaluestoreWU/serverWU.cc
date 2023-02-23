@@ -39,7 +39,7 @@ using keyvaluestore::KeyValueStore;
 using keyvaluestore::Request;
 using keyvaluestore::Response;
 
-# define KV_SIZE 1000
+# define KV_SIZE 100000
 
 // KV data structure
 std::map<std::string, std::string> myMap;
