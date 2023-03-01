@@ -50,11 +50,28 @@ std::string get_value_from_map(std::string key) {
   return val;
 }
 
+std::string set_value_from_map(std::string key, std::string value) {
+  std::map<std::string,std::string>::iterator itr;
+  itr = myMap.find(key);
+  if (itr != myMap.end()) {
+    itr->second = value;
+    return "Value changed to : " + value;
+  } else {
+    return "Key not found";
+  }
+}
+
 // Logic and data behind the server's behavior.
 class KeyValueStoreServiceImpl final : public KeyValueStore::Service {
   Status GetValue(ServerContext* context,
                   const Request* request, Response* response) override {
     response->set_value(get_value_from_map(request->key().c_str()));
+    return Status::OK;
+  }
+
+  Status SetValue(ServerContext* context,
+                  const Request* request, Response* response) override {
+    response->set_value(set_value_from_map(request->key().c_str(), request->value().c_str()));
     return Status::OK;
   }
 };

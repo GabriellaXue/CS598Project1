@@ -20,11 +20,13 @@ package keyvaluestore;
 service KeyValueStore {
   // Provides a value for each key request
   rpc GetValue (Request) returns (Response) {}
+  rpc SetValue (Request) returns (Response) {}
 }
 
 // The request message containing the key
 message Request {
   string key = 1;
+  string value = 2;
 }
 
 // The response message containing the value associated with the key
