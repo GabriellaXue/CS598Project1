@@ -47,20 +47,27 @@ using keyvaluestore::Response;
 // KV data structure
 std::map<std::string, std::string> myMap;
 
+// Global lock to prevent data race
+absl::Mutex mu_;
+
 // Global function used in the KeyValueStoreServiceImpl
 std::string get_value_from_map(std::string key) {
-  std::string val = myMap.at(key); 
+  mu_.Lock();
+  std::string val = myMap.at(key);
+  mu_.Unlock();
   return val;
 }
 
 std::string set_value_from_map(std::string key, std::string value) {
-  std::cout << "set value triggered" << std::endl;
+  mu_.Lock();
   std::map<std::string,std::string>::iterator itr;
   itr = myMap.find(key);
   if (itr != myMap.end()) {
     itr->second = value;
+    mu_.Unlock();
     return "Value changed to : " + value;
   } else {
+    mu_.Unlock();
     return "Key not found";
   }
 }
