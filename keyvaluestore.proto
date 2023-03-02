@@ -27,9 +27,12 @@ service KeyValueStore {
 message Request {
   string key = 1;
   string value = 2;
+  string timestamp = 3;
+  string id = 4;
 }
 
 // The response message containing the value associated with the key
 message Response {
-  string value = 1;
+  string id = 1;
+  string value = 2;
 }
