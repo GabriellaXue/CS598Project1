@@ -83,6 +83,24 @@ class KeyValueStoreClient {
     // }
   }
 
+  void SetValue(const std::string& key, const std::string& val) {
+    // Context for the client. It could be used to convey extra information to
+    // the server and/or tweak certain RPC behaviors.
+    Request request;
+    request.set_key(key);
+    request.set_value(val);
+
+    // Call object to store rpc data
+    AsyncClientCall* call = new AsyncClientCall;
+
+    call->response_reader =
+      stub_->PrepareAsyncSetValue(&call->context, request, &cq_);
+
+    call->response_reader->StartCall();
+
+    call->response_reader->Finish(&call->response, &call->status, (void*)call);
+  }
+
   // Loop while listening for completed responses.
   // Prints out the response from the server.
   void AsyncCompleteRpc() {
@@ -99,7 +117,7 @@ class KeyValueStoreClient {
       GPR_ASSERT(ok);
 
       if (call->status.ok())
-        std::cout << "Greeter received: " << call->response.value() << std::endl;
+        std::cout << "Value received: " << call->response.value() << std::endl;
       else
         std::cout << "RPC failed" << std::endl;
 
@@ -108,21 +126,21 @@ class KeyValueStoreClient {
     }
   }
 
-   private:
-  // struct for keeping state and data information
-  struct AsyncClientCall {
-    // Container for the data we expect from the server.
-    Response response;
+  private:
+    // struct for keeping state and data information
+    struct AsyncClientCall {
+      // Container for the data we expect from the server.
+      Response response;
 
-    // Context for the client. It could be used to convey extra information to
-    // the server and/or tweak certain RPC behaviors.
-    ClientContext context;
+      // Context for the client. It could be used to convey extra information to
+      // the server and/or tweak certain RPC behaviors.
+      ClientContext context;
 
-    // Storage for the status of the RPC upon completion.
-    Status status;
+      // Storage for the status of the RPC upon completion.
+      Status status;
 
-    std::unique_ptr<ClientAsyncResponseReader<Response>> response_reader;
-  };
+      std::unique_ptr<ClientAsyncResponseReader<Response>> response_reader;
+    };
   
   // Out of the passed in Channel comes the stub, stored here, our view of the
   // server's exposed services.
@@ -164,6 +182,11 @@ int main(int argc, char** argv) {
   // std::string key = argv[1];
 
   client.GetValue("100");
+  client.GetValue("096");
+  // std::string value = "2";
+  // client.SetValue("101", "2");
+  // client.SetValue("100", "3");
+  // client.SetValue("100", "4");
 
   std::cout << "Press control-c to quit" << std::endl << std::endl;
   thread_.join();

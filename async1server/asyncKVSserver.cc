@@ -53,6 +53,18 @@ std::string get_value_from_map(std::string key) {
   return val;
 }
 
+std::string set_value_from_map(std::string key, std::string value) {
+  std::cout << "set value triggered" << std::endl;
+  std::map<std::string,std::string>::iterator itr;
+  itr = myMap.find(key);
+  if (itr != myMap.end()) {
+    itr->second = value;
+    return "Value changed to : " + value;
+  } else {
+    return "Key not found";
+  }
+}
+
 class ServerImpl final {
  public:
   ~ServerImpl() {
@@ -99,14 +111,22 @@ class ServerImpl final {
       if (status_ == CREATE) {
         // Make this instance progress to the PROCESS state.
         status_ = PROCESS;
-
         // As part of the initial CREATE state, we *request* that the system
         // start processing SayHello requests. In this request, "this" acts are
         // the tag uniquely identifying the request (so that different CallData
         // instances can serve different requests concurrently), in this case
         // the memory address of this CallData instance.
-        service_->RequestGetValue(&ctx_, &request_, &responder_, cq_, cq_,
+
+        // TODO: request value will always be empty at this point
+        // consider pulling information from either service or clientContext
+        if ((&request_)->value() == "") {
+          service_->RequestGetValue(&ctx_, &request_, &responder_, cq_, cq_,
                                   this);
+        } else {
+          service_->RequestSetValue(&ctx_, &request_, &responder_, cq_, cq_,
+                                  this);
+        }
+        
       } else if (status_ == PROCESS) {
         // Spawn a new CallData instance to serve new clients while we process
         // the one for this CallData. The instance will deallocate itself as
@@ -114,7 +134,12 @@ class ServerImpl final {
         new CallData(service_, cq_);
 
         // The actual processing.
-        response_.set_value(get_value_from_map(request_.key().c_str()));
+        if ((&request_)->value() == "") {
+          response_.set_value(get_value_from_map(request_.key().c_str()));
+        } else {
+          response_.set_value(set_value_from_map(request_.key().c_str(), request_.value().c_str()));
+          std::cout << "value changed: " << request_.value() << std::endl;
+        }
 
         // And we are done! Let the gRPC runtime know we've finished, using the
         // memory address of this instance as the uniquely identifying tag for
