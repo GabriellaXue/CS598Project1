@@ -51,24 +51,28 @@ std::map<std::string, std::string> myMap;
 absl::Mutex mu_;
 
 // Global function used in the KeyValueStoreServiceImpl
-std::string get_value_from_map(std::string key) {
+std::string value_from_map(std::string key, std::string val_flag) {
   mu_.Lock();
-  std::string val = myMap.at(key);
-  mu_.Unlock();
-  return val;
-}
 
-std::string set_value_from_map(std::string key, std::string value) {
-  mu_.Lock();
-  std::map<std::string,std::string>::iterator itr;
-  itr = myMap.find(key);
-  if (itr != myMap.end()) {
-    itr->second = value;
-    mu_.Unlock();
-    return "Value changed to : " + value;
+  // if receiving SetValue RPC
+  if (val_flag != "") {
+    std::map<std::string,std::string>::iterator itr;
+    itr = myMap.find(key);
+    if (itr != myMap.end()) {
+      // set value equal to value specified in the flag
+      itr->second = val_flag;
+      mu_.Unlock();
+      return "Value changed to : " + myMap.at(key); // I think the algorithm we implement is supposed to send back ACK here
+    } else {
+      mu_.Unlock();
+      return "Key not found";
+    }
+
+  // if receiving GetValue RPC
   } else {
-    mu_.Unlock();
-    return "Key not found";
+      std::string val = myMap.at(key);
+      mu_.Unlock();
+      return val;
   }
 }
 
@@ -118,21 +122,15 @@ class ServerImpl final {
       if (status_ == CREATE) {
         // Make this instance progress to the PROCESS state.
         status_ = PROCESS;
+
         // As part of the initial CREATE state, we *request* that the system
         // start processing SayHello requests. In this request, "this" acts are
         // the tag uniquely identifying the request (so that different CallData
         // instances can serve different requests concurrently), in this case
         // the memory address of this CallData instance.
 
-        // TODO: request value will always be empty at this point
-        // consider pulling information from either service or clientContext
-        if ((&request_)->value() == "") {
-          service_->RequestGetValue(&ctx_, &request_, &responder_, cq_, cq_,
+        service_->RequestCombinedRPC(&ctx_, &request_, &responder_, cq_, cq_,
                                   this);
-        } else {
-          service_->RequestSetValue(&ctx_, &request_, &responder_, cq_, cq_,
-                                  this);
-        }
         
       } else if (status_ == PROCESS) {
         // Spawn a new CallData instance to serve new clients while we process
@@ -141,13 +139,8 @@ class ServerImpl final {
         new CallData(service_, cq_);
 
         // The actual processing.
-        if ((&request_)->value() == "") {
-          response_.set_value(get_value_from_map(request_.key().c_str()));
-        } else {
-          response_.set_value(set_value_from_map(request_.key().c_str(), request_.value().c_str()));
-          std::cout << "value changed: " << request_.value() << std::endl;
-        }
-
+        response_.set_value(value_from_map(request_.key().c_str(), request_.value().c_str()));
+        
         // And we are done! Let the gRPC runtime know we've finished, using the
         // memory address of this instance as the uniquely identifying tag for
         // the event.
@@ -188,8 +181,10 @@ class ServerImpl final {
   void HandleRpcs() {
     // Spawn a new CallData instance to serve new clients.
     new CallData(&service_, cq_.get());
+
     void* tag;  // uniquely identifies a request.
     bool ok;
+
     while (true) {
       // Block waiting to read the next event from the completion queue. The
       // event is uniquely identified by its tag, which in this case is the
