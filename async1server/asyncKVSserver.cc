@@ -21,6 +21,7 @@
 #include <string>
 #include <thread>
 #include <map>
+#include <tuple>
 
 #include <grpc/support/log.h>
 #include <grpcpp/grpcpp.h>
@@ -50,29 +51,36 @@ std::map<std::string, std::string> myMap;
 // Global lock to prevent data race
 absl::Mutex mu_;
 
+// Global time to keep track of the most recent ACK time
+// Reject incoming writer if it has a smaller timestamp than local time.
+time_t localTime = 0;
+
 // Global function used in the KeyValueStoreServiceImpl
-std::string value_from_map(std::string key, std::string val_flag) {
+std::tuple<std::string, std::string, std::string> value_from_map(std::string key, std::string val_flag, std::string timestamp, std::string clientID) {
+  time_t timestamp_int = std::stoi(timestamp);
+
   mu_.Lock();
 
   // if receiving SetValue RPC
   if (val_flag != "") {
     std::map<std::string,std::string>::iterator itr;
     itr = myMap.find(key);
-    if (itr != myMap.end()) {
+    if (itr != myMap.end() && timestamp_int > localTime) {
       // set value equal to value specified in the flag
       itr->second = val_flag;
+      localTime = timestamp_int;
       mu_.Unlock();
-      return "Value changed to : " + myMap.at(key); // I think the algorithm we implement is supposed to send back ACK here
+      return std::make_tuple(std::to_string(timestamp_int), clientID, val_flag); // I think the algorithm we implement is supposed to send back ACK here
     } else {
       mu_.Unlock();
-      return "Key not found";
+      return std::make_tuple("0", "0", "0");
     }
 
   // if receiving GetValue RPC
   } else {
       std::string val = myMap.at(key);
       mu_.Unlock();
-      return val;
+      return std::make_tuple(std::to_string(timestamp_int), clientID, val);
   }
 }
 
@@ -139,7 +147,11 @@ class ServerImpl final {
         new CallData(service_, cq_);
 
         // The actual processing.
-        response_.set_value(value_from_map(request_.key().c_str(), request_.value().c_str()));
+        std::tuple<std::string, std::string, std::string> responseTuple = 
+          value_from_map(request_.key().c_str(), request_.value().c_str(), request_.timestamp(), request_.id().c_str());
+        response_.set_timestamp(std::get<0>(responseTuple));
+        response_.set_id(std::get<1>(responseTuple));
+        response_.set_value(std::get<2>(responseTuple));
         
         // And we are done! Let the gRPC runtime know we've finished, using the
         // memory address of this instance as the uniquely identifying tag for
