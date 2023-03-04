@@ -57,16 +57,16 @@ target_link_libraries(kvs_grpc_proto
   ${_PROTOBUF_LIBPROTOBUF})
 
 # client
-add_executable(asyncKVSclient "asyncKVSclient.cc")
-target_link_libraries(asyncKVSclient
+add_executable(client "client.cc")
+target_link_libraries(client
   kvs_grpc_proto
   ${_REFLECTION}
   ${_GRPC_GRPCPP}
   ${_PROTOBUF_LIBPROTOBUF})
 
 # server
-add_executable(asyncKVSserver "asyncKVSserver.cc")
-target_link_libraries(asyncKVSserver
+add_executable(replica "replica.cc")
+target_link_libraries(replica
   kvs_grpc_proto
   ${_REFLECTION}
   ${_GRPC_GRPCPP}

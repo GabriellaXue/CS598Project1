@@ -16,7 +16,7 @@ licenses(["notice"])
 
 cc_binary(
     name = "keyvaluestore_client",
-    srcs = ["asyncKVSclient.cc"],
+    srcs = ["client.cc"],
     defines = ["BAZEL_BUILD"],
     deps = [
         "//:grpc++",
@@ -26,7 +26,7 @@ cc_binary(
 
 cc_binary(
     name = "keyvaluestore_server",
-    srcs = ["asyncKVSserver.cc"],
+    srcs = ["replica.cc"],
     defines = ["BAZEL_BUILD"],
     deps = [
         "//:grpc++",
