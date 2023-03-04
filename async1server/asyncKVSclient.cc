@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <unistd.h>
 
 #include <grpc/support/log.h>
 #include <grpcpp/grpcpp.h>
@@ -40,25 +41,31 @@ using keyvaluestore::KeyValueStore;
 using keyvaluestore::Request;
 using keyvaluestore::Response;
 
+// Unique client id to differentiate it from each other
+// TODO: find the correct id from connection info, use 0 for placeholder for now
+std::string clientID = "0";
+
 class KeyValueStoreClient {
  public:
   explicit KeyValueStoreClient(std::shared_ptr<Channel> channel)
       : stub_(KeyValueStore::NewStub(channel)) {}
 
-  void GetValue(const std::string& key) {
-    CombinedRPC(key, "");
+  void GetValue(const std::string& key, const std::string& timestamp, const std::string& id) {
+    CombinedRPC(key, "", timestamp, id);
   }
 
-  void SetValue(const std::string& key, const std::string& val_flag) {
-    CombinedRPC(key, val_flag);
+  void SetValue(const std::string& key, const std::string& val_flag, const std::string& timestamp, const std::string& id) {
+    CombinedRPC(key, val_flag, timestamp, id);
   }
 
-  void CombinedRPC(const std::string& key, const std::string& val_flag) {
+  void CombinedRPC(const std::string& key, const std::string& val_flag, const std::string& timestamp, const std::string& id) {
     // Context for the client. It could be used to convey extra information to
     // the server and/or tweak certain RPC behaviors.
     Request request;
     request.set_key(key);
     request.set_value(val_flag);
+    request.set_timestamp(timestamp);
+    request.set_id(id);
 
     // Call object to store rpc data
     AsyncClientCall* call = new AsyncClientCall;
@@ -87,10 +94,36 @@ class KeyValueStoreClient {
       // corresponds solely to the request for updates introduced by Finish().
       GPR_ASSERT(ok);
 
-      if (call->status.ok())
-        std::cout << "Value received: " << call->response.value() << std::endl;
+      if (call->status.ok()) {
+        int timestamp_int = std::stoi(call->response.timestamp());
+        if (timestamp_int > 0) {
+          std::cout << timestamp_int << ": [value, id] " << 
+                      call->response.value()<<  ", " << call->response.id() << std::endl;
+        }
+      }
       else
         std::cout << "RPC failed" << std::endl;
+
+      // // Update operation validation info if the request was completed successfully
+      // if (call->status.ok()):
+      //   for operation in validationQueue:
+      //     time_t currentTime = time(0);
+      //     operation.duration = curentTime - operation.latestUpdate;
+      //     operation.latestUpdate = currentTime;
+      //     if operation.duration > 5:
+      //       delete operation from validationQueue
+      //       break;
+      //     if operation.id == call->response.id() and operation.valProposed == call->response.value():
+      //       operation.ackCount ++;
+      //       if ackCount >= 3:
+      //         std::cout << "Value received: " << call->response.value() << std::endl;
+      //         delete call;
+      //         break;
+      //   if no such operation found in validationQueue:
+      //     // means this is the first server response get back to the client
+      //     create new operationValidation and append to validationQueue
+      //     with ackCount = 1 and valProposed as call->response.value()
+          
 
       // Once we're complete, deallocate the call object.
       delete call;
@@ -120,6 +153,27 @@ class KeyValueStoreClient {
   // The producer-consumer queue we use to communicate asynchronously with the
   // gRPC runtime.
   CompletionQueue cq_;
+
+  // struct OperationValidation {
+  //   // Servers ack count, only allow client operation when there's majority of the
+  //   // server responses the same value.
+  //   int ackCount = 0;
+
+  //   // Value proposed by servers, wait to be accepted by client
+  //   std::string valProposed;
+
+  //   // Operation id.
+  //   std::string id;
+
+  //   // lifetime of the operation. Remove if it didnt get the majority of the response
+  //   // after 5 seconds timeout.
+  //   time_t duration;
+
+  //   time_t lastestUpdate;
+  // }
+
+  // // A queue of operations blocked waiting for validation.
+  // List<OperationValidation> validationQueue;
 };
 
 int main(int argc, char** argv) {
@@ -152,12 +206,12 @@ int main(int argc, char** argv) {
 
   // std::string key = argv[1];
 
-  client.GetValue("100");
-  client.GetValue("096");
+  client.GetValue("100", "166000", clientID);
   // std::string value = "2";
-  client.SetValue("101", "2");
-  client.SetValue("100", "3");
-  client.GetValue("100");
+  sleep(2);
+  client.SetValue("101", "2", "166002", clientID);
+  client.SetValue("100", "3", "166001", clientID);
+
 
   std::cout << "Press control-c to quit" << std::endl << std::endl;
   thread_.join();

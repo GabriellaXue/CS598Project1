@@ -32,6 +32,7 @@ message Request {
 
 // The response message containing the value associated with the key
 message Response {
-  string id = 1;
-  string value = 2;
+  string value = 1;
+  string timestamp = 2;
+  string id = 3;
 }
