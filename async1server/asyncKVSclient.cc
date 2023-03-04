@@ -87,6 +87,7 @@ class KeyValueStoreClient {
 
     // Block until the next result is available in the completion queue "cq".
     while (cq_.Next(&got_tag, &ok)) {
+
       // The tag in this example is the memory location of the call object
       AsyncClientCall* call = static_cast<AsyncClientCall*>(got_tag);
 
@@ -104,7 +105,7 @@ class KeyValueStoreClient {
       else
         std::cout << "RPC failed" << std::endl;
 
-      // // Update operation validation info if the request was completed successfully
+      // Update operation validation info if the request was completed successfully
       // if (call->status.ok()):
       //   for operation in validationQueue:
       //     time_t currentTime = time(0);
@@ -177,45 +178,63 @@ class KeyValueStoreClient {
 };
 
 int main(int argc, char** argv) {
-  // Instantiate the client. It requires a channel, out of which the actual RPCs
-  // are created. This channel models a connection to an endpoint (in this case,
-  // localhost at port 50051). We indicate that the channel isn't authenticated
-  // (use of InsecureChannelCredentials()).
-  // In this example, we are using a cache which has been added in as an
-  // interceptor.
 
-  std::string target_str1;
+  std::string target_str1, target_str2, target_str3, target_str4, target_str5;
   target_str1 = "localhost:50051";
+  target_str2 = "localhost:50052";
+  target_str3 = "localhost:50053";
+  target_str4 = "localhost:50054";
+  target_str5 = "localhost:50055";
   
-  KeyValueStoreClient client(
+  KeyValueStoreClient client1(
       grpc::CreateChannel(target_str1, grpc::InsecureChannelCredentials()));
 
+  KeyValueStoreClient client2(
+      grpc::CreateChannel(target_str2, grpc::InsecureChannelCredentials()));
+
+  KeyValueStoreClient client3(
+      grpc::CreateChannel(target_str3, grpc::InsecureChannelCredentials()));
+        
+  KeyValueStoreClient client4(
+      grpc::CreateChannel(target_str4, grpc::InsecureChannelCredentials()));
+
+  KeyValueStoreClient client5(
+      grpc::CreateChannel(target_str5, grpc::InsecureChannelCredentials()));
 
   // Spawn reader thread that loops indefinitely
-  std::thread thread_ = std::thread(&KeyValueStoreClient::AsyncCompleteRpc, &client);
-
-
-  char c = '0';
+  std::thread thread_1 = std::thread(&KeyValueStoreClient::AsyncCompleteRpc, &client1);
+  std::thread thread_2 = std::thread(&KeyValueStoreClient::AsyncCompleteRpc, &client2);
+  std::thread thread_3 = std::thread(&KeyValueStoreClient::AsyncCompleteRpc, &client3);
+  std::thread thread_4 = std::thread(&KeyValueStoreClient::AsyncCompleteRpc, &client4);
+  std::thread thread_5 = std::thread(&KeyValueStoreClient::AsyncCompleteRpc, &client5);
   
-  // The below commented out code would async get vals for the given keys
-
-  // for (int i = 10; i < 100; i++) {
-  //   key = c + std::to_string(i);
-  //   client.GetValue(key);  // The actual RPC call!
-  // }
-
-  // std::string key = argv[1];
-
-  client.GetValue("100", "166000", clientID);
-  // std::string value = "2";
-  sleep(2);
-  client.SetValue("101", "2", "166002", clientID);
-  client.SetValue("100", "3", "166001", clientID);
-
+  if (argc == 2) {
+    std::string key_given = argv[1];
+    std::string timestamp_given = std::to_string(time(0));
+    client1.GetValue(key_given, timestamp_given, clientID);
+    client2.GetValue(key_given, timestamp_given, clientID);
+    client3.GetValue(key_given, timestamp_given, clientID);
+    client4.GetValue(key_given, timestamp_given, clientID);
+    client5.GetValue(key_given, timestamp_given, clientID);
+  } else if (argc == 3) {
+    std::string key_given = argv[1];
+    std::string val_given = argv[2];
+    std::string timestamp_given = std::to_string(time(0));
+    client1.SetValue(key_given,val_given, timestamp_given, clientID);
+    client2.SetValue(key_given,val_given, timestamp_given, clientID);
+    client3.SetValue(key_given,val_given, timestamp_given, clientID);
+    client4.SetValue(key_given,val_given, timestamp_given, clientID);
+    client5.SetValue(key_given,val_given, timestamp_given, clientID);
+  } else {
+    std::cout << "Invalid number of parameters, check usage." << std::endl;
+  }
 
   std::cout << "Press control-c to quit" << std::endl << std::endl;
-  thread_.join();
-
+  thread_1.join();
+  thread_2.join();
+  thread_3.join();
+  thread_4.join();
+  thread_5.join();
 
   return 0;
 }

@@ -45,6 +45,9 @@ using keyvaluestore::Response;
 
 # define KV_SIZE 100
 
+// cutomized server number, parsed from argv.
+std::string server_num;
+
 // KV data structure
 std::map<std::string, std::string> myMap;
 
@@ -80,7 +83,6 @@ std::tuple<std::string, std::string, std::string> value_from_map(std::string key
   } else {
       std::string val = myMap.at(key);
       mu_.Unlock();
-      std::cout << "local time! " << std::to_string(localTime) << std::endl;
       return std::make_tuple(std::to_string(localTime), clientID, val);
   }
 }
@@ -95,7 +97,7 @@ class ServerImpl final {
 
   // There is no shutdown handling in this code.
   void Run() {
-    std::string server_address("0.0.0.0:50051");
+    std::string server_address("0.0.0.0:5005" + server_num);
 
     ServerBuilder builder;
     // Listen on the given address without any authentication mechanism.
@@ -216,6 +218,8 @@ class ServerImpl final {
 };
 
 int main(int argc, char** argv) {
+
+  server_num = argv[1];
 
   int keyLen = log10(KV_SIZE) + 1; // can hard code to 24 once final implementation
   int valLen = log10(KV_SIZE) + 1; // can hard code to 10 once final implementation
