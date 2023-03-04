@@ -41,9 +41,17 @@ using keyvaluestore::KeyValueStore;
 using keyvaluestore::Request;
 using keyvaluestore::Response;
 
+// TODO: add timeout
+
 // Unique client id to differentiate it from each other
 // TODO: find the correct id from connection info, use 0 for placeholder for now
 std::string clientID = "0";
+
+// Get majority of acks to continue with the operation.
+int ackCount = 0;
+time_t lastUpdate = 0;
+std::string valProposed = "";
+bool result_flag = false;
 
 class KeyValueStoreClient {
  public:
@@ -95,36 +103,26 @@ class KeyValueStoreClient {
       // corresponds solely to the request for updates introduced by Finish().
       GPR_ASSERT(ok);
 
-      if (call->status.ok()) {
-        int timestamp_int = std::stoi(call->response.timestamp());
-        if (timestamp_int >= 0) {
-          std::cout << timestamp_int << ": [value, id] " << 
-                      call->response.value()<<  ", " << call->response.id() << std::endl;
+      if (call->status.ok() && std::stoi(call->response.timestamp()) >= 0) {
+        time_t c_timestamp = std::stoi(call->response.timestamp());
+        if (lastUpdate == 0) {
+          lastUpdate = c_timestamp;
+          valProposed = call->response.value();
+        } else {
+          if (lastUpdate < c_timestamp) {
+            lastUpdate = c_timestamp;
+            valProposed = call->response.value();
+          }
         }
-      }
-      else
+        ackCount ++;
+        if (ackCount >= 3 && !result_flag) {
+          if (valProposed == "w") std::cout << "Writer upated server successfully" << std::endl;
+          else std::cout << "Read value " << valProposed << std::endl;
+          result_flag = true;
+        } 
+      } else {
         std::cout << "RPC failed" << std::endl;
-
-      // Update operation validation info if the request was completed successfully
-      // if (call->status.ok()):
-      //   for operation in validationQueue:
-      //     time_t currentTime = time(0);
-      //     operation.duration = curentTime - operation.latestUpdate;
-      //     operation.latestUpdate = currentTime;
-      //     if operation.duration > 5:
-      //       delete operation from validationQueue
-      //       break;
-      //     if operation.id == call->response.id() and operation.valProposed == call->response.value():
-      //       operation.ackCount ++;
-      //       if ackCount >= 3:
-      //         std::cout << "Value received: " << call->response.value() << std::endl;
-      //         delete call;
-      //         break;
-      //   if no such operation found in validationQueue:
-      //     // means this is the first server response get back to the client
-      //     create new operationValidation and append to validationQueue
-      //     with ackCount = 1 and valProposed as call->response.value()
-          
+      }
 
       // Once we're complete, deallocate the call object.
       delete call;
@@ -154,27 +152,6 @@ class KeyValueStoreClient {
   // The producer-consumer queue we use to communicate asynchronously with the
   // gRPC runtime.
   CompletionQueue cq_;
-
-  // struct OperationValidation {
-  //   // Servers ack count, only allow client operation when there's majority of the
-  //   // server responses the same value.
-  //   int ackCount = 0;
-
-  //   // Value proposed by servers, wait to be accepted by client
-  //   std::string valProposed;
-
-  //   // Operation id.
-  //   std::string id;
-
-  //   // lifetime of the operation. Remove if it didnt get the majority of the response
-  //   // after 5 seconds timeout.
-  //   time_t duration;
-
-  //   time_t lastestUpdate;
-  // }
-
-  // // A queue of operations blocked waiting for validation.
-  // List<OperationValidation> validationQueue;
 };
 
 int main(int argc, char** argv) {

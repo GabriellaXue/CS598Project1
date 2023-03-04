@@ -73,7 +73,7 @@ std::tuple<std::string, std::string, std::string> value_from_map(std::string key
       itr->second = val_flag;
       localTime = timestamp_int;
       mu_.Unlock();
-      return std::make_tuple(std::to_string(timestamp_int), clientID, val_flag); // I think the algorithm we implement is supposed to send back ACK here
+      return std::make_tuple(std::to_string(timestamp_int), clientID, "w"); // I think the algorithm we implement is supposed to send back ACK here
     } else {
       mu_.Unlock();
       return std::make_tuple("-1", "0", "0");
