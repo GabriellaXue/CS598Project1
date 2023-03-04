@@ -73,14 +73,15 @@ std::tuple<std::string, std::string, std::string> value_from_map(std::string key
       return std::make_tuple(std::to_string(timestamp_int), clientID, val_flag); // I think the algorithm we implement is supposed to send back ACK here
     } else {
       mu_.Unlock();
-      return std::make_tuple("0", "0", "0");
+      return std::make_tuple("-1", "0", "0");
     }
 
   // if receiving GetValue RPC
   } else {
       std::string val = myMap.at(key);
       mu_.Unlock();
-      return std::make_tuple(std::to_string(timestamp_int), clientID, val);
+      std::cout << "local time! " << std::to_string(localTime) << std::endl;
+      return std::make_tuple(std::to_string(localTime), clientID, val);
   }
 }
 

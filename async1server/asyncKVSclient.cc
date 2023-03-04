@@ -96,7 +96,7 @@ class KeyValueStoreClient {
 
       if (call->status.ok()) {
         int timestamp_int = std::stoi(call->response.timestamp());
-        if (timestamp_int > 0) {
+        if (timestamp_int >= 0) {
           std::cout << timestamp_int << ": [value, id] " << 
                       call->response.value()<<  ", " << call->response.id() << std::endl;
         }
